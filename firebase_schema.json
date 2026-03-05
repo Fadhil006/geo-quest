@@ -1,0 +1,126 @@
+{
+  "firestore_schema": {
+    "teams": {
+      "_description": "Registered teams collection",
+      "_documentId": "Firebase Auth UID (auto-generated)",
+      "teamName": "string — Team display name",
+      "members": ["string — Member 1 name", "string — Member 2 name", "string — Member 3 name"],
+      "createdAt": "Timestamp — Registration time",
+      "sessionId": "string | null — Active session document ID"
+    },
+    "challenges": {
+      "_description": "GPS-bound challenge locations and questions",
+      "_documentId": "Auto-generated",
+      "title": "string — Challenge title",
+      "description": "string — Short description shown on map",
+      "category": "string — enum: logicalReasoning | algorithmOutput | codeDebugging | mathPuzzle | technicalReasoning | observational",
+      "difficulty": "string — enum: easy | medium | hard | expert",
+      "type": "string — multipleChoice | textInput",
+      "location": "GeoPoint(lat, lng) — GPS coordinates",
+      "geofenceRadius": "number — Unlock radius in meters (default 20)",
+      "points": "number — Base points awarded",
+      "timeLimitSeconds": "number — Per-challenge time limit",
+      "question": "string — The question content",
+      "options": ["string — Option A", "string — Option B", "string — Option C", "string — Option D"],
+      "isActive": "boolean — Whether challenge is currently available"
+    },
+    "challenge_answers": {
+      "_description": "SERVER-ONLY — Never readable by clients",
+      "_documentId": "Same as corresponding challenge ID",
+      "answer": "string — Correct answer (lowercase, trimmed)",
+      "acceptedVariants": ["string — Alternative accepted answers"]
+    },
+    "sessions": {
+      "_description": "Active game sessions (2-hour windows)",
+      "_documentId": "Auto-generated",
+      "teamId": "string — References teams/{teamId}",
+      "startTime": "Timestamp — Server-set session start",
+      "endTime": "Timestamp — startTime + 2 hours",
+      "score": "number — Current score (server-validated)",
+      "totalAnswered": "number — Total questions attempted",
+      "correctAnswers": "number — Correct answer count",
+      "currentDifficulty": "string — Current difficulty level",
+      "completedChallengeIds": ["string — List of completed challenge IDs"],
+      "skippedChallengeIds": ["string — List of skipped challenge IDs"],
+      "isActive": "boolean — False when session ended or expired",
+      "activeChallengeId": "string | null — Currently opened challenge"
+    },
+    "submissions": {
+      "_description": "Answer submissions for server-side validation",
+      "_documentId": "Auto-generated",
+      "sessionId": "string — References sessions/{sessionId}",
+      "challengeId": "string — References challenges/{challengeId}",
+      "answer": "string — Submitted answer",
+      "submittedAt": "Timestamp — Server timestamp",
+      "status": "string — pending | correct | incorrect",
+      "isCorrect": "boolean — Set by Cloud Function",
+      "pointsAwarded": "number — Set by Cloud Function",
+      "newTotalScore": "number — Updated session score",
+      "feedback": "string | null — Optional feedback message"
+    },
+    "event_config": {
+      "_description": "Global event configuration",
+      "_documentId": "main",
+      "sessionDurationMinutes": 120,
+      "defaultGeofenceRadius": 20,
+      "skipPenalty": 10,
+      "targetScore": 500,
+      "maxTeams": 100,
+      "eventStartTime": "Timestamp",
+      "eventEndTime": "Timestamp",
+      "isEventActive": "boolean"
+    }
+  },
+  "realtime_database_schema": {
+    "leaderboard": {
+      "{teamId}": {
+        "teamName": "string",
+        "score": "number",
+        "completedCount": "number",
+        "rank": "number",
+        "isActive": "boolean",
+        "lastUpdated": "number — millisecondsSinceEpoch"
+      }
+    },
+    "active_timers": {
+      "{teamId}": {
+        "sessionId": "string",
+        "startTime": "number — millisecondsSinceEpoch",
+        "endTime": "number — millisecondsSinceEpoch",
+        "isActive": "boolean"
+      }
+    },
+    "live_scores": {
+      "{teamId}": {
+        "score": "number",
+        "lastChallenge": "string",
+        "timestamp": "number"
+      }
+    }
+  },
+  "indexes": [
+    {
+      "collection": "sessions",
+      "fields": [
+        {"field": "teamId", "order": "ASCENDING"},
+        {"field": "isActive", "order": "ASCENDING"},
+        {"field": "startTime", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collection": "challenges",
+      "fields": [
+        {"field": "isActive", "order": "ASCENDING"},
+        {"field": "difficulty", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collection": "submissions",
+      "fields": [
+        {"field": "sessionId", "order": "ASCENDING"},
+        {"field": "submittedAt", "order": "DESCENDING"}
+      ]
+    }
+  ]
+}
+
