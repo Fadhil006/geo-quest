@@ -85,19 +85,6 @@ class _TestScreenState extends ConsumerState<TestScreen>
     }
   }
 
-  String _pointsLabel(TestTab tab) {
-    switch (tab) {
-      case TestTab.easy:
-        return '5 pts';
-      case TestTab.medium:
-        return '10 pts';
-      case TestTab.hard:
-        return '20 pts';
-      case TestTab.rapidFire:
-        return '5-20 pts';
-    }
-  }
-
   String _timeLabel(TestTab tab) {
     switch (tab) {
       case TestTab.easy:

@@ -1,7 +1,6 @@
 import '../../domain/entities/team.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/firebase_auth_datasource.dart';
-import '../models/team_model.dart';
 
 /// Firebase implementation of AuthRepository
 class AuthRepositoryImpl implements AuthRepository {

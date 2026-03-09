@@ -60,5 +60,5 @@ flutter:
     - assets/images/
     - assets/markers/
     - question/
-    - question/map/
+    - assets/map/
 

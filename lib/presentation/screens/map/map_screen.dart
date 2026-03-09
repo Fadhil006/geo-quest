@@ -488,7 +488,7 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Image.asset(
-                          'question/map/image.png',
+                          'assets/map/image.png',
                           width: mapW,
                           height: mapH,
                           fit: BoxFit.cover,

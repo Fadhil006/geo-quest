@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
-import '../../../core/theme/glassmorphism.dart';
 import '../../../domain/entities/challenge.dart';
 import '../common/category_chip.dart';
 
@@ -133,54 +132,3 @@ class ChallengeBottomSheet extends ConsumerWidget {
   }
 }
 
-class _DifficultyBadge extends StatelessWidget {
-  final ChallengeDifficulty difficulty;
-
-  const _DifficultyBadge({required this.difficulty});
-
-  Color get _color {
-    switch (difficulty) {
-      case ChallengeDifficulty.easy:
-        return AppColors.difficultyEasy;
-      case ChallengeDifficulty.medium:
-        return AppColors.difficultyMedium;
-      case ChallengeDifficulty.hard:
-        return AppColors.difficultyHard;
-      case ChallengeDifficulty.expert:
-        return AppColors.difficultyExpert;
-    }
-  }
-
-  String get _label {
-    switch (difficulty) {
-      case ChallengeDifficulty.easy:
-        return 'Easy';
-      case ChallengeDifficulty.medium:
-        return 'Medium';
-      case ChallengeDifficulty.hard:
-        return 'Hard';
-      case ChallengeDifficulty.expert:
-        return 'Expert';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: _color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _color.withOpacity(0.4)),
-      ),
-      child: Text(
-        _label,
-        style: GoogleFonts.inter(
-          color: _color,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
