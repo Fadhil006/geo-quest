@@ -59,4 +59,6 @@ flutter:
   assets:
     - assets/images/
     - assets/markers/
+    - question/
+    - question/map/
 

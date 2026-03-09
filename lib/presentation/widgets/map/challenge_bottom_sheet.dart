@@ -7,7 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/glassmorphism.dart';
 import '../../../domain/entities/challenge.dart';
-import 'category_chip.dart';
+import '../common/category_chip.dart';
 
 /// Bottom sheet that appears when a challenge is unlocked via GPS
 class ChallengeBottomSheet extends ConsumerWidget {
@@ -48,8 +48,8 @@ class ChallengeBottomSheet extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: AppColors.neonGreen.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: AppColors.neonGreen.withOpacity(0.5)),
+                    border:
+                        Border.all(color: AppColors.neonGreen.withOpacity(0.5)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -67,10 +67,9 @@ class ChallengeBottomSheet extends ConsumerWidget {
                       ),
                     ],
                   ),
-                )
-                    .animate()
-                    .fadeIn()
-                    .shimmer(duration: 1500.ms, color: AppColors.neonGreen.withOpacity(0.3)),
+                ).animate().fadeIn().shimmer(
+                    duration: 1500.ms,
+                    color: AppColors.neonGreen.withOpacity(0.3)),
 
                 const SizedBox(height: 16),
 
@@ -82,30 +81,10 @@ class ChallengeBottomSheet extends ConsumerWidget {
 
                 const SizedBox(height: 8),
 
-                // Category & Difficulty
+                // Category
                 Row(
                   children: [
                     CategoryChip(category: challenge.category),
-                    const SizedBox(width: 8),
-                    _DifficultyBadge(difficulty: challenge.difficulty),
-                    const Spacer(),
-                    // Points
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.neonCyan.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${challenge.points} pts',
-                        style: GoogleFonts.orbitron(
-                          color: AppColors.neonCyan,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
                   ],
                 ).animate().fadeIn(delay: 200.ms),
 
@@ -205,4 +184,3 @@ class _DifficultyBadge extends StatelessWidget {
     );
   }
 }
-

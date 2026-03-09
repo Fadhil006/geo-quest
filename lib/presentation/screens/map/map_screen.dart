@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -9,12 +10,12 @@ import '../../../core/theme/glassmorphism.dart';
 import '../../../core/utils/geo_utils.dart';
 import '../../../core/widgets/gradient_scaffold.dart';
 import '../../../core/widgets/neon_app_bar.dart';
+import '../../../core/widgets/neon_button.dart';
 import '../../../domain/entities/challenge.dart';
 import '../../providers/challenge_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../widgets/map/challenge_bottom_sheet.dart';
-import '../../widgets/map/category_chip.dart';
 
 // Conditionally import Google Maps — always present in pubspec
 // but only used when offlineMode is false.
@@ -51,15 +52,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   // ═══════════════════════════════════════════
-  // OFFLINE MODE — Challenge List Explorer
+  // OFFLINE MODE — Interactive Image Map
   // ═══════════════════════════════════════════
   Widget _buildOfflineMapScreen(BuildContext context) {
     final challengesAsync = ref.watch(challengesProvider);
     final session = ref.watch(sessionStreamProvider).valueOrNull;
-    final completedIds =
-        Set<String>.from(session?.completedChallengeIds ?? []);
-    final skippedIds =
-        Set<String>.from(session?.skippedChallengeIds ?? []);
+    final completedIds = Set<String>.from(session?.completedChallengeIds ?? []);
+    final skippedIds = Set<String>.from(session?.skippedChallengeIds ?? []);
 
     return GradientScaffold(
       appBar: const NeonAppBar(title: 'QUEST MAP'),
@@ -74,48 +73,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
           data: (challenges) {
             return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Offline mode banner
-                Container(
-                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.neonOrange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: AppColors.neonOrange.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.wifi_off_rounded,
-                          color: AppColors.neonOrange, size: 18),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Offline Mode — GPS disabled. Tap any challenge to try it.',
-                          style: GoogleFonts.inter(
-                            color: AppColors.neonOrange,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ).animate().fadeIn(),
-
                 // Stats bar
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: Row(
                     children: [
-                      _miniStat(
-                          Icons.flag_rounded,
-                          '${challenges.length}',
-                          'Total',
-                          AppColors.neonCyan),
+                      _miniStat(Icons.flag_rounded, '${challenges.length}',
+                          'Total', AppColors.neonCyan),
                       const SizedBox(width: 12),
                       _miniStat(
                           Icons.check_circle_rounded,
@@ -123,34 +88,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           'Done',
                           AppColors.neonGreen),
                       const SizedBox(width: 12),
-                      _miniStat(
-                          Icons.skip_next_rounded,
-                          '${skippedIds.length}',
-                          'Skipped',
-                          AppColors.neonOrange),
+                      _miniStat(Icons.skip_next_rounded, '${skippedIds.length}',
+                          'Skipped', AppColors.neonOrange),
                     ],
                   ),
                 ).animate().fadeIn(delay: 100.ms),
 
-                const SizedBox(height: 4),
-
-                // Challenge list
+                // ── Interactive Map ──
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                    itemCount: challenges.length,
-                    itemBuilder: (context, index) {
-                      final c = challenges[index];
-                      final isCompleted = completedIds.contains(c.id);
-                      final isSkipped = skippedIds.contains(c.id);
-
-                      return _buildChallengeCard(
-                        context,
-                        challenge: c,
-                        isCompleted: isCompleted,
-                        isSkipped: isSkipped,
-                        index: index,
-                      );
+                  child: _InteractiveQuestMap(
+                    challenges: challenges,
+                    completedIds: completedIds,
+                    skippedIds: skippedIds,
+                    onChallengeTap: (challenge) {
+                      _showChallengeSheet(challenge);
                     },
                   ),
                 ),
@@ -192,114 +143,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildChallengeCard(
-    BuildContext context, {
-    required Challenge challenge,
-    required bool isCompleted,
-    required bool isSkipped,
-    required int index,
-  }) {
-    final statusColor = isCompleted
-        ? AppColors.neonGreen
-        : isSkipped
-            ? AppColors.neonOrange
-            : AppColors.neonCyan;
-    final statusIcon = isCompleted
-        ? Icons.check_circle_rounded
-        : isSkipped
-            ? Icons.skip_next_rounded
-            : Icons.lock_open_rounded;
-    final statusLabel =
-        isCompleted ? 'Completed' : isSkipped ? 'Skipped' : 'Available';
-
-    return GestureDetector(
-      onTap: (isCompleted || isSkipped)
-          ? null
-          : () => _showChallengeSheet(challenge),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isCompleted
-              ? AppColors.neonGreen.withOpacity(0.05)
-              : AppColors.card,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isCompleted
-                ? AppColors.neonGreen.withOpacity(0.2)
-                : AppColors.glassBorder,
-            width: 0.5,
-          ),
-        ),
-        child: Row(
-          children: [
-            // Status icon
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: statusColor.withOpacity(0.15),
-              ),
-              child: Icon(statusIcon, color: statusColor, size: 20),
-            ),
-            const SizedBox(width: 14),
-
-            // Challenge info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    challenge.title,
-                    style: GoogleFonts.inter(
-                      color: isCompleted
-                          ? AppColors.textMuted
-                          : AppColors.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      decoration:
-                          isCompleted ? TextDecoration.lineThrough : null,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      CategoryChip(category: challenge.category),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${challenge.points} pts',
-                        style: GoogleFonts.orbitron(
-                          color: AppColors.neonCyan,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        statusLabel,
-                        style: GoogleFonts.inter(
-                          color: statusColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Arrow
-            if (!isCompleted && !isSkipped)
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textMuted, size: 22),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
   }
 
   // ═══════════════════════════════════════════
@@ -401,8 +244,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     LocationState locationState,
     dynamic session,
   ) {
-    final completedIds =
-        Set<String>.from(session?.completedChallengeIds ?? []);
+    final completedIds = Set<String>.from(session?.completedChallengeIds ?? []);
     final pos = locationState.position;
 
     _markers.clear();
@@ -475,8 +317,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final challenges = ref.watch(challengesProvider).valueOrNull ?? [];
     final locationNotifier = ref.read(locationProvider.notifier);
     final session = ref.watch(sessionStreamProvider).valueOrNull;
-    final completedIds =
-        Set<String>.from(session?.completedChallengeIds ?? []);
+    final completedIds = Set<String>.from(session?.completedChallengeIds ?? []);
 
     for (final challenge in challenges) {
       if (completedIds.contains(challenge.id)) continue;
@@ -520,3 +361,476 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 }
 
+// ═══════════════════════════════════════════════════
+// Interactive Image-Based Quest Map
+// ═══════════════════════════════════════════════════
+class _InteractiveQuestMap extends StatefulWidget {
+  final List<Challenge> challenges;
+  final Set<String> completedIds;
+  final Set<String> skippedIds;
+  final void Function(Challenge) onChallengeTap;
+
+  const _InteractiveQuestMap({
+    required this.challenges,
+    required this.completedIds,
+    required this.skippedIds,
+    required this.onChallengeTap,
+  });
+
+  @override
+  State<_InteractiveQuestMap> createState() => _InteractiveQuestMapState();
+}
+
+class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
+  final TransformationController _transformController =
+      TransformationController();
+  Challenge? _selectedChallenge;
+  bool _showWalkAnimation = false;
+
+  /// Distribute challenges as pin positions on the map image.
+  /// Uses a seeded random spread across the image bounds.
+  List<Offset> _markerPositions(int count, Size mapSize) {
+    final rng = Random(42); // Fixed seed for deterministic placement
+    const margin = 0.08; // 8% margin from edges
+    final positions = <Offset>[];
+    for (int i = 0; i < count; i++) {
+      final x = mapSize.width * (margin + rng.nextDouble() * (1 - 2 * margin));
+      final y = mapSize.height * (margin + rng.nextDouble() * (1 - 2 * margin));
+      positions.add(Offset(x, y));
+    }
+    return positions;
+  }
+
+  Color _markerColor(Challenge c) {
+    if (widget.completedIds.contains(c.id)) return AppColors.neonGreen;
+    if (widget.skippedIds.contains(c.id)) return AppColors.neonOrange;
+    return AppColors.neonCyan;
+  }
+
+  IconData _markerIcon(Challenge c) {
+    if (widget.completedIds.contains(c.id)) return Icons.check_circle_rounded;
+    if (widget.skippedIds.contains(c.id)) return Icons.skip_next_rounded;
+    return Icons.location_on_rounded;
+  }
+
+  /// IDs of the next 3 unattempted challenges to show on the map.
+  List<String> get _nextAvailableIds {
+    final available = widget.challenges
+        .where((c) =>
+            !widget.completedIds.contains(c.id) &&
+            !widget.skippedIds.contains(c.id))
+        .take(3)
+        .map((c) => c.id)
+        .toList();
+    return available;
+  }
+
+  /// Whether this challenge is one of the next 3 available to attempt.
+  bool _isInNextAvailable(String challengeId) {
+    return _nextAvailableIds.contains(challengeId);
+  }
+
+  /// Returns the encounter order number (1-based) for a challenge.
+  /// Completed and skipped challenges get their order based on when the team
+  /// encountered them. Unattempted challenges show no number (null).
+  int? _encounterOrder(String challengeId) {
+    // Build ordered encounter list: completed + skipped in encounter order
+    final encountered = <String>[
+      ...widget.completedIds,
+      ...widget.skippedIds,
+    ];
+    final idx = encountered.indexOf(challengeId);
+    if (idx >= 0) return idx + 1;
+    return null; // not yet encountered
+  }
+
+  @override
+  void dispose() {
+    _transformController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // ── Map with markers ──
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Map image is 1117x605. Scale to fit width, keep aspect ratio.
+            const imgAspect = 1117.0 / 605.0;
+            final viewW = constraints.maxWidth;
+            final viewH = constraints.maxHeight;
+            final mapW = viewW;
+            final mapH = mapW / imgAspect;
+
+            final positions =
+                _markerPositions(widget.challenges.length, Size(mapW, mapH));
+
+            return InteractiveViewer(
+              transformationController: _transformController,
+              minScale: 1.0,
+              maxScale: 3.0,
+              constrained: false,
+              boundaryMargin: EdgeInsets.symmetric(
+                horizontal: viewW * 0.2,
+                vertical: viewH * 0.2,
+              ),
+              child: SizedBox(
+                width: mapW,
+                height: max(mapH, viewH),
+                child: Stack(
+                  children: [
+                    // Map image
+                    Positioned(
+                      top: max(0, (viewH - mapH) / 2),
+                      left: 0,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          'question/map/image.png',
+                          width: mapW,
+                          height: mapH,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    // Dark overlay for contrast
+                    Positioned(
+                      top: max(0, (viewH - mapH) / 2),
+                      left: 0,
+                      child: Container(
+                        width: mapW,
+                        height: mapH,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.black.withValues(alpha: 0.25),
+                        ),
+                      ),
+                    ),
+                    // Challenge markers — only show done/skipped + next 3 available
+                    ...List.generate(widget.challenges.length, (i) {
+                      final c = widget.challenges[i];
+                      final isCompleted = widget.completedIds.contains(c.id);
+                      final isSkipped = widget.skippedIds.contains(c.id);
+
+                      // Only show completed, skipped, or the next 3 unattempted
+                      if (!isCompleted &&
+                          !isSkipped &&
+                          !_isInNextAvailable(c.id)) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final pos = positions[i];
+                      final yOffset = max(0.0, (viewH - mapH) / 2);
+                      final color = _markerColor(c);
+                      final isSelected = _selectedChallenge?.id == c.id;
+                      final markerSize = isSelected ? 36.0 : 28.0;
+
+                      // Encounter order: completed + skipped in the order the team got them
+                      final encounterOrder = _encounterOrder(c.id);
+
+                      return Positioned(
+                        left: pos.dx - markerSize / 2,
+                        top: yOffset + pos.dy - markerSize / 2,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() => _selectedChallenge = c);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: markerSize,
+                            height: markerSize,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: color.withValues(alpha: 0.9),
+                              border: Border.all(
+                                color: isSelected
+                                    ? Colors.white
+                                    : color.withValues(alpha: 0.6),
+                                width: isSelected ? 3 : 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: color.withValues(alpha: 0.5),
+                                  blurRadius: isSelected ? 16 : 8,
+                                  spreadRadius: isSelected ? 2 : 0,
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: isCompleted
+                                  ? const Icon(Icons.check_rounded,
+                                      color: Colors.white, size: 16)
+                                  : isSkipped
+                                      ? const Icon(Icons.skip_next_rounded,
+                                          color: Colors.white, size: 14)
+                                      : Text(
+                                          encounterOrder != null
+                                              ? '$encounterOrder'
+                                              : '?',
+                                          style: GoogleFonts.orbitron(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+
+        // ── Walk animation overlay ──
+        if (_showWalkAnimation)
+          Container(
+            color: Colors.black54,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🚶', style: TextStyle(fontSize: 56))
+                      .animate(
+                        onComplete: (c) => c.repeat(),
+                      )
+                      .slideX(
+                        begin: -0.3,
+                        end: 0.3,
+                        duration: 800.ms,
+                        curve: Curves.easeInOut,
+                      ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Walking to challenge...',
+                    style: GoogleFonts.orbitron(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.neonCyan,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // ── Selected challenge info panel ──
+        if (_selectedChallenge != null)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: _buildChallengePanel(_selectedChallenge!),
+          ),
+
+        // ── Legend ──
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.card.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.glassBorder, width: 0.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _legendDot(AppColors.neonCyan, 'Quest'),
+                _legendDot(AppColors.neonGreen, 'Done'),
+                _legendDot(AppColors.neonOrange, 'Skipped'),
+              ],
+            ),
+          ).animate().fadeIn(delay: 300.ms),
+        ),
+      ],
+    );
+  }
+
+  Widget _legendDot(Color color, String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChallengePanel(Challenge challenge) {
+    final isCompleted = widget.completedIds.contains(challenge.id);
+    final isSkipped = widget.skippedIds.contains(challenge.id);
+    final isAvailable = !isCompleted && !isSkipped;
+    final color = _markerColor(challenge);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(
+          top: BorderSide(color: color.withValues(alpha: 0.4), width: 2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.textMuted,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Title + close
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color.withValues(alpha: 0.2),
+                  ),
+                  child: Icon(_markerIcon(challenge), color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    challenge.title,
+                    style: GoogleFonts.inter(
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded,
+                      color: AppColors.textMuted),
+                  onPressed: () => setState(() => _selectedChallenge = null),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Info chips
+            Row(
+              children: [
+                _panelChip(
+                  isCompleted
+                      ? Icons.check_circle_rounded
+                      : isSkipped
+                          ? Icons.skip_next_rounded
+                          : Icons.play_circle_rounded,
+                  isCompleted
+                      ? 'Completed'
+                      : isSkipped
+                          ? 'Skipped'
+                          : 'Available',
+                  isCompleted
+                      ? AppColors.neonGreen
+                      : isSkipped
+                          ? AppColors.neonOrange
+                          : AppColors.neonCyan,
+                ),
+              ],
+            ),
+            // Action button
+            if (isAvailable) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: NeonButton(
+                  text: 'WALK HERE & SOLVE',
+                  icon: Icons.directions_walk_rounded,
+                  onPressed: () => _walkToChallenge(challenge),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ).animate().slideY(begin: 0.3, duration: 300.ms, curve: Curves.easeOut);
+  }
+
+  Widget _panelChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _walkToChallenge(Challenge challenge) {
+    setState(() => _showWalkAnimation = true);
+
+    // Simulate walking for 1.5 seconds then open challenge
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      setState(() {
+        _showWalkAnimation = false;
+        _selectedChallenge = null;
+      });
+      widget.onChallengeTap(challenge);
+    });
+  }
+}

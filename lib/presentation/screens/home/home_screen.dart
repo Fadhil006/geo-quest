@@ -80,8 +80,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStartView(
-      BuildContext context, WidgetRef ref, String teamName) {
+  Widget _buildStartView(BuildContext context, WidgetRef ref, String teamName) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -123,7 +122,8 @@ class HomeScreen extends ConsumerWidget {
             NeonButton(
               text: AppStrings.startQuest,
               icon: Icons.play_arrow_rounded,
-              onPressed: () => ref.read(sessionProvider.notifier).startSession(),
+              onPressed: () =>
+                  ref.read(sessionProvider.notifier).startSession(),
             ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.3),
           ],
         ),
@@ -131,8 +131,8 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDashboard(BuildContext context, WidgetRef ref,
-      dynamic session, TimerState timer) {
+  Widget _buildDashboard(
+      BuildContext context, WidgetRef ref, dynamic session, TimerState timer) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       child: Column(
@@ -212,6 +212,15 @@ class HomeScreen extends ConsumerWidget {
             onPressed: () => context.push('/leaderboard'),
           ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2),
 
+          const SizedBox(height: 16),
+
+          NeonOutlineButton(
+            text: 'TEST MODE',
+            icon: Icons.science_rounded,
+            color: AppColors.neonOrange,
+            onPressed: () => context.push('/test'),
+          ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.2),
+
           // ── Time expired overlay ──
           if (timer.isExpired)
             Container(
@@ -248,4 +257,3 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 }
-

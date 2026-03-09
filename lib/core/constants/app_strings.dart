@@ -43,7 +43,7 @@ class AppStrings {
   // ── Challenge ──
   static const String submit = 'Submit';
   static const String skip = 'Skip';
-  static const String skipPenalty = '-10 pts penalty';
+  static const String skipPenalty = 'No penalty';
   static const String correct = 'Correct!';
   static const String incorrect = 'Incorrect!';
   static const String challengeUnlocked = 'Challenge Unlocked!';
@@ -72,4 +72,3 @@ class AppStrings {
   static const String errorMinMembers = 'Team must have at least 3 members.';
   static const String errorMaxMembers = 'Team can have at most 4 members.';
 }
-

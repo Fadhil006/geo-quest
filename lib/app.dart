@@ -10,6 +10,7 @@ import 'presentation/screens/map/map_screen.dart';
 import 'presentation/screens/challenge/challenge_screen.dart';
 import 'presentation/screens/leaderboard/leaderboard_screen.dart';
 import 'presentation/screens/admin/admin_panel_screen.dart';
+import 'presentation/screens/test/test_screen.dart';
 
 /// Router provider — survives rebuilds, uses refreshListenable for auth changes
 final routerProvider = Provider<GoRouter>((ref) {
@@ -63,6 +64,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/admin',
         name: 'admin',
         builder: (context, state) => const AdminPanelScreen(),
+      ),
+      GoRoute(
+        path: '/test',
+        name: 'test',
+        builder: (context, state) => const TestScreen(),
       ),
     ],
   );

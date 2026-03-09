@@ -12,9 +12,8 @@ class AppConfig {
   static const double defaultGeofenceRadius = 20.0;
 
   /// Skip penalty in points
-  static const int skipPenalty = 10;
+  static const int skipPenalty = 0;
 
   /// Target score to win
   static const int targetScore = 500;
 }
-

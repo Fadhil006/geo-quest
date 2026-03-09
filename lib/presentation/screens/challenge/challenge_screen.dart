@@ -12,7 +12,9 @@ import '../../../domain/entities/challenge.dart';
 import '../../providers/challenge_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../providers/timer_provider.dart';
-import '../../widgets/map/category_chip.dart';
+import '../../providers/leaderboard_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../widgets/common/category_chip.dart';
 import '../../widgets/challenge/challenge_timer_bar.dart';
 
 class ChallengeScreen extends ConsumerStatefulWidget {
@@ -66,6 +68,20 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
           challengeId: challenge.id,
           answer: answer,
         );
+
+    // Update leaderboard after submission
+    Future.delayed(const Duration(milliseconds: 600), () {
+      final updatedSession = ref.read(sessionStreamProvider).valueOrNull;
+      final team = ref.read(currentTeamProvider);
+      if (updatedSession != null && team != null) {
+        ref.read(leaderboardUpdaterProvider.notifier).updateScore(
+              teamId: team.id,
+              teamName: team.teamName,
+              score: updatedSession.score,
+              completedCount: updatedSession.correctAnswers,
+            );
+      }
+    });
 
     ref.read(challengeTimerProvider.notifier).stopTimer();
     setState(() => _showResult = true);
@@ -130,23 +146,6 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
                     Row(
                       children: [
                         CategoryChip(category: challenge.category),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.neonCyan.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${challenge.points} pts',
-                            style: GoogleFonts.orbitron(
-                              color: AppColors.neonCyan,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -198,8 +197,7 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
                         return GestureDetector(
                           onTap: _showResult
                               ? null
-                              : () =>
-                                  setState(() => _selectedOption = option),
+                              : () => setState(() => _selectedOption = option),
                           child: Container(
                             width: double.infinity,
                             margin: const EdgeInsets.only(bottom: 10),
@@ -289,7 +287,7 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
                     icon: const Icon(Icons.skip_next_rounded,
                         color: AppColors.textMuted),
                     label: Text(
-                      '${AppStrings.skip} (${AppStrings.skipPenalty})',
+                      AppStrings.skip,
                       style: const TextStyle(
                           color: AppColors.textMuted, fontSize: 13),
                     ),
@@ -326,17 +324,6 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
                 .headlineSmall
                 ?.copyWith(color: color),
           ),
-          if (submission.result != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              '+${submission.result!.pointsAwarded} points',
-              style: GoogleFonts.orbitron(
-                color: color,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
           const SizedBox(height: 16),
           NeonButton(
             text: 'Continue',
@@ -353,4 +340,3 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
     ).animate().scale(duration: 500.ms, curve: Curves.elasticOut);
   }
 }
-

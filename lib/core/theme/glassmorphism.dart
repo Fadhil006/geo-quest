@@ -55,7 +55,8 @@ class GlassmorphicContainer extends StatelessWidget {
         margin: EdgeInsets.all(borderWidth),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(borderRadius - borderWidth),
-          color: AppColors.card.withOpacity(opacity),
+          color: AppColors.card
+              .withOpacity(opacity.clamp(0.0, 1.0) < 0.3 ? 0.65 : opacity),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(borderRadius - borderWidth),

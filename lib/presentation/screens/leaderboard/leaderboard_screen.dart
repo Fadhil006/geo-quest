@@ -63,8 +63,7 @@ class LeaderboardScreen extends ConsumerWidget {
                     itemCount: entries.length,
                     itemBuilder: (context, index) {
                       final entry = entries[index];
-                      final isCurrentTeam =
-                          currentTeam?.id == entry.teamId;
+                      final isCurrentTeam = currentTeam?.id == entry.teamId;
 
                       return _LeaderboardRow(
                         entry: entry,
@@ -152,26 +151,27 @@ class _PodiumCard extends StatelessWidget {
         height: height,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(icon, style: const TextStyle(fontSize: 28)),
-            const SizedBox(height: 8),
+            Text(icon, style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 4),
             Text(
               entry.teamName,
               style: GoogleFonts.inter(
                 color: AppColors.textPrimary,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               '${entry.score}',
               style: GoogleFonts.orbitron(
                 color: color,
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -339,4 +339,3 @@ class _LeaderboardRow extends StatelessWidget {
     }
   }
 }
-

@@ -22,7 +22,7 @@ class AppTheme {
         onSurface: AppColors.textPrimary,
         onError: AppColors.textPrimary,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.card,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -77,7 +77,8 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceLight,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         hintStyle: GoogleFonts.inter(
           color: AppColors.textMuted,
           fontSize: 14,
@@ -215,4 +216,3 @@ class AppTheme {
     );
   }
 }
-

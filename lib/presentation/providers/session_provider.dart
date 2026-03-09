@@ -52,6 +52,17 @@ class SessionNotifier extends StateNotifier<AsyncValue<Session?>> {
   Future<void> refreshSession() async {
     if (_teamId != null) await _loadSession();
   }
+
+  /// Add bonus points directly (e.g. from rapid fire / bonus questions)
+  void addBonusPoints(int points) {
+    final session = state.valueOrNull;
+    if (session == null) return;
+    final updated = session.copyWith(
+      score: session.score + points,
+    );
+    // Persist to mock session repo
+    _sessionRepository.updateSession(updated);
+  }
 }
 
 final sessionProvider =
@@ -69,4 +80,3 @@ final sessionStreamProvider = StreamProvider<Session?>((ref) {
   if (team == null) return Stream.value(null);
   return ref.read(sessionRepositoryProvider).sessionStream(team.id);
 });
-
