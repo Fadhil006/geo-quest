@@ -1,0 +1,389 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "What is the average time complexity of Quick Sort?",
+      "options": {
+        "A": "O(n²)",
+        "B": "O(n log n)",
+        "C": "O(log n)",
+        "D": "O(n)"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 2,
+      "question": "Which traversal of a Binary Search Tree produces sorted output?",
+      "options": {
+        "A": "Preorder",
+        "B": "Inorder",
+        "C": "Postorder",
+        "D": "Level order"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 3,
+      "question": "Which data structure is used in BFS?",
+      "options": {
+        "A": "Stack",
+        "B": "Queue",
+        "C": "Heap",
+        "D": "Array"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 4,
+      "question": "Which data structure is used in DFS?",
+      "options": {
+        "A": "Queue",
+        "B": "Stack",
+        "C": "Heap",
+        "D": "Array"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 5,
+      "question": "Which algorithm finds the shortest path in a graph with non-negative weights?",
+      "options": {
+        "A": "Kruskal",
+        "B": "Dijkstra",
+        "C": "Prim",
+        "D": "Merge"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 6,
+      "question": "What is the worst case complexity of Binary Search?",
+      "options": {
+        "A": "O(log n)",
+        "B": "O(n)",
+        "C": "O(n log n)",
+        "D": "O(1)"
+      },
+      "answer": "A"
+    },
+    {
+      "id": 7,
+      "question": "Which sorting algorithm repeatedly selects the smallest element?",
+      "options": {
+        "A": "Selection Sort",
+        "B": "Merge Sort",
+        "C": "Heap Sort",
+        "D": "Quick Sort"
+      },
+      "answer": "A"
+    },
+    {
+      "id": 8,
+      "question": "Which data structure stores key-value pairs?",
+      "options": {
+        "A": "Stack",
+        "B": "Queue",
+        "C": "Hash Table",
+        "D": "Tree"
+      },
+      "answer": "C"
+    },
+    {
+      "id": 9,
+      "question": "What is the worst case complexity of Bubble Sort?",
+      "options": {
+        "A": "O(n)",
+        "B": "O(n log n)",
+        "C": "O(n²)",
+        "D": "O(log n)"
+      },
+      "answer": "C"
+    },
+    {
+      "id": 10,
+      "question": "Which data structure allows insertion from both ends?",
+      "options": {
+        "A": "Queue",
+        "B": "Stack",
+        "C": "Deque",
+        "D": "Heap"
+      },
+      "answer": "C"
+    },
+    {
+      "id": 11,
+      "question": "What does CPU stand for?",
+      "options": {
+        "A": "Central Program Unit",
+        "B": "Central Processing Unit",
+        "C": "Computer Processing Unit",
+        "D": "Control Processing Unit"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 12,
+      "question": "What does RAM stand for?",
+      "options": {
+        "A": "Random Access Memory",
+        "B": "Read Access Memory",
+        "C": "Rapid Access Memory",
+        "D": "Run Access Memory"
+      },
+      "answer": "A"
+    },
+    {
+      "id": 13,
+      "question": "Which language is primarily used for web page structure?",
+      "options": {
+        "A": "Python",
+        "B": "HTML",
+        "C": "Java",
+        "D": "C++"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 14,
+      "question": "Which protocol is used to transfer web pages?",
+      "options": {
+        "A": "FTP",
+        "B": "HTTP",
+        "C": "TCP",
+        "D": "SMTP"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 15,
+      "question": "Which company developed the Python language?",
+      "options": {
+        "A": "Google",
+        "B": "Microsoft",
+        "C": "Python Software Foundation",
+        "D": "Apple"
+      },
+      "answer": "C"
+    },
+    {
+      "id": 16,
+      "question": "Which of these is NOT an operating system?",
+      "options": {
+        "A": "Linux",
+        "B": "Windows",
+        "C": "Oracle",
+        "D": "macOS"
+      },
+      "answer": "C"
+    },
+    {
+      "id": 17,
+      "question": "Which memory is fastest?",
+      "options": {
+        "A": "RAM",
+        "B": "Cache",
+        "C": "Hard Disk",
+        "D": "ROM"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 18,
+      "question": "What does SQL stand for?",
+      "options": {
+        "A": "Structured Query Language",
+        "B": "Simple Query Language",
+        "C": "Standard Query Language",
+        "D": "Sequential Query Language"
+      },
+      "answer": "A"
+    },
+    {
+      "id": 19,
+      "question": "Which data structure is used for undo operations?",
+      "options": {
+        "A": "Queue",
+        "B": "Stack",
+        "C": "Array",
+        "D": "Tree"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 20,
+      "question": "What does API stand for?",
+      "options": {
+        "A": "Application Programming Interface",
+        "B": "Application Process Interface",
+        "C": "Applied Programming Interface",
+        "D": "Application Program Internet"
+      },
+      "answer": "A"
+    },
+    {
+      "id": 21,
+      "question": "What will be the output? print(2 + 3 * 4)",
+      "options": {
+        "A": "20",
+        "B": "14",
+        "C": "24",
+        "D": "9"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 22,
+      "question": "What will be the output? a = [1,2,3]; print(a[-1])",
+      "options": {
+        "A": "1",
+        "B": "2",
+        "C": "3",
+        "D": "Error"
+      },
+      "answer": "C"
+    },
+    {
+      "id": 23,
+      "question": "What will be printed? for i in range(3): print(i)",
+      "options": {
+        "A": "1 2 3",
+        "B": "0 1 2",
+        "C": "0 1 2 3",
+        "D": "1 2"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 24,
+      "question": "What error occurs? print(5/0)",
+      "options": {
+        "A": "SyntaxError",
+        "B": "ValueError",
+        "C": "ZeroDivisionError",
+        "D": "TypeError"
+      },
+      "answer": "C"
+    },
+    {
+      "id": 25,
+      "question": "What will be the output? print(len(\"AI\"))",
+      "options": {
+        "A": "1",
+        "B": "2",
+        "C": "3",
+        "D": "Error"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 26,
+      "question": "What will be the output? x = 5; x += 3; print(x)",
+      "options": {
+        "A": "8",
+        "B": "5",
+        "C": "3",
+        "D": "Error"
+      },
+      "answer": "A"
+    },
+    {
+      "id": 27,
+      "question": "What will be the output? print(type({}))",
+      "options": {
+        "A": "list",
+        "B": "set",
+        "C": "dict",
+        "D": "tuple"
+      },
+      "answer": "C"
+    },
+    {
+      "id": 28,
+      "question": "What will be printed? print(\"Hello\"[1])",
+      "options": {
+        "A": "H",
+        "B": "e",
+        "C": "l",
+        "D": "o"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 29,
+      "question": "What will be the output? a = [1,2]; a.append(3); print(a)",
+      "options": {
+        "A": "[1,2]",
+        "B": "[1,2,3]",
+        "C": "[3,1,2]",
+        "D": "Error"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 30,
+      "question": "What will be printed? print(10//3)",
+      "options": {
+        "A": "3.33",
+        "B": "3",
+        "C": "4",
+        "D": "3.0"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 31,
+      "question": "What does DNS stand for?",
+      "options": {
+        "A": "Domain Name System",
+        "B": "Data Network Service",
+        "C": "Domain Network Server",
+        "D": "Digital Name System"
+      },
+      "answer": "A"
+    },
+    {
+      "id": 32,
+      "question": "Which algorithm finds Minimum Spanning Tree?",
+      "options": {
+        "A": "Prim’s",
+        "B": "Dijkstra",
+        "C": "Binary Search",
+        "D": "BFS"
+      },
+      "answer": "A"
+    },
+    {
+      "id": 33,
+      "question": "What does GPU stand for?",
+      "options": {
+        "A": "General Processing Unit",
+        "B": "Graphics Processing Unit",
+        "C": "Graph Processing Unit",
+        "D": "Graphic Program Utility"
+      },
+      "answer": "B"
+    },
+    {
+      "id": 34,
+      "question": "Which sorting algorithm uses divide and conquer?",
+      "options": {
+        "A": "Bubble Sort",
+        "B": "Selection Sort",
+        "C": "Merge Sort",
+        "D": "Insertion Sort"
+      },
+      "answer": "C"
+    },
+    {
+      "id": 35,
+      "question": "Which structure stores elements in LIFO order?",
+      "options": {
+        "A": "Queue",
+        "B": "Stack",
+        "C": "Heap",
+        "D": "Tree"
+      },
+      "answer": "B"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+// Provide a `flutter` extension for plugin subprojects that reference
+// flutter.compileSdkVersion / flutter.minSdkVersion during evaluation.
+class FlutterExtension {
+    int compileSdkVersion = 36
+    int minSdkVersion = 23
+    int targetSdkVersion = 36
+}
+
+rootProject.buildDir = "../build"
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(":app")
+    if (!project.extensions.findByName("flutter")) {
+        project.extensions.create("flutter", FlutterExtension)
+    }
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}

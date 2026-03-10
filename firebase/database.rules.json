@@ -1,0 +1,23 @@
+{
+  "rules": {
+    "leaderboard": {
+      "$teamId": {
+        ".read": true,
+        ".write": "auth !== null && auth.uid === $teamId"
+      }
+    },
+    "active_timers": {
+      "$teamId": {
+        ".read": "auth !== null && auth.uid === $teamId",
+        ".write": "auth !== null && auth.uid === $teamId"
+      }
+    },
+    "live_scores": {
+      ".read": true,
+      "$teamId": {
+        ".write": "auth !== null && auth.uid === $teamId"
+      }
+    }
+  }
+}
+
