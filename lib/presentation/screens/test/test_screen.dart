@@ -157,8 +157,10 @@ class _TestScreenState extends ConsumerState<TestScreen>
                   child: CircularProgressIndicator(color: AppColors.neonCyan),
                 ),
                 error: (e, _) => Center(
-                  child: Text('Error: $e',
-                      style: const TextStyle(color: AppColors.error)),
+                  child: Text(
+                    'Error: $e',
+                    style: const TextStyle(color: AppColors.error),
+                  ),
                 ),
                 data: (challenges) {
                   return TabBarView(
@@ -306,18 +308,19 @@ class _TestScreenState extends ConsumerState<TestScreen>
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => RapidFireScreen(
-                          challenges: allChallenges,
-                        ),
+                        builder: (_) =>
+                            RapidFireScreen(challenges: allChallenges),
                       ),
                     );
                   },
                 ),
               ],
             ),
-          )
-              .animate()
-              .scale(delay: 200.ms, duration: 500.ms, curve: Curves.elasticOut),
+          ).animate().scale(
+            delay: 200.ms,
+            duration: 500.ms,
+            curve: Curves.elasticOut,
+          ),
         ],
       ),
     );
@@ -500,7 +503,8 @@ class _TestChallengeScreenState extends ConsumerState<_TestChallengeScreen> {
                     ),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                        color: AppColors.neonYellow.withValues(alpha: 0.4)),
+                      color: AppColors.neonYellow.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -518,18 +522,24 @@ class _TestChallengeScreenState extends ConsumerState<_TestChallengeScreen> {
                     ],
                   ),
                 ).animate().shimmer(
-                      duration: 2000.ms,
-                      color: AppColors.neonYellow.withValues(alpha: 0.3),
-                    ),
+                  duration: 2000.ms,
+                  color: AppColors.neonYellow.withValues(alpha: 0.3),
+                ),
 
               // ── Points & Time info ──
               Row(
                 children: [
-                  _infoChip(Icons.stars_rounded, '$totalPoints pts',
-                      AppColors.neonCyan),
+                  _infoChip(
+                    Icons.stars_rounded,
+                    '$totalPoints pts',
+                    AppColors.neonCyan,
+                  ),
                   const SizedBox(width: 10),
-                  _infoChip(Icons.timer_rounded,
-                      '${challenge.timeLimitSeconds}s', AppColors.neonOrange),
+                  _infoChip(
+                    Icons.timer_rounded,
+                    '${challenge.timeLimitSeconds}s',
+                    AppColors.neonOrange,
+                  ),
                   const SizedBox(width: 10),
                   _infoChip(
                     Icons.trending_up_rounded,
@@ -701,9 +711,9 @@ class _TestChallengeScreenState extends ConsumerState<_TestChallengeScreen> {
 
   Future<void> _submit(Challenge challenge) async {
     if (_selectedOption == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an answer')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select an answer')));
       return;
     }
 
@@ -715,7 +725,9 @@ class _TestChallengeScreenState extends ConsumerState<_TestChallengeScreen> {
       return;
     }
 
-    await ref.read(submissionProvider.notifier).submitAnswer(
+    await ref
+        .read(submissionProvider.notifier)
+        .submitAnswer(
           sessionId: session.id,
           challengeId: challenge.id,
           answer: _selectedOption!,
@@ -745,7 +757,9 @@ class _TestChallengeScreenState extends ConsumerState<_TestChallengeScreen> {
     final team = ref.read(currentTeamProvider);
     if (session == null || team == null) return;
 
-    ref.read(leaderboardUpdaterProvider.notifier).updateScore(
+    ref
+        .read(leaderboardUpdaterProvider.notifier)
+        .updateScore(
           teamId: team.id,
           teamName: team.teamName,
           score: session.score,
@@ -757,7 +771,8 @@ class _TestChallengeScreenState extends ConsumerState<_TestChallengeScreen> {
     final submission = ref.watch(submissionProvider);
     final isCorrect = submission.result?.isCorrect ?? false;
     final color = isCorrect ? AppColors.neonGreen : AppColors.error;
-    final pointsAwarded = (submission.result?.pointsAwarded ?? 0) +
+    final pointsAwarded =
+        (submission.result?.pointsAwarded ?? 0) +
         (isCorrect ? (_bonusPoints ?? 0) : 0);
 
     return NeonGlassContainer(

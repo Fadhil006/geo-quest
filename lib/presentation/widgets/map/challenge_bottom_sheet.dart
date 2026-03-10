@@ -42,19 +42,25 @@ class ChallengeBottomSheet extends ConsumerWidget {
               children: [
                 // Unlocked badge
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.neonGreen.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
-                    border:
-                        Border.all(color: AppColors.neonGreen.withOpacity(0.5)),
+                    border: Border.all(
+                      color: AppColors.neonGreen.withOpacity(0.5),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.lock_open_rounded,
-                          color: AppColors.neonGreen, size: 16),
+                      Icon(
+                        Icons.lock_open_rounded,
+                        color: AppColors.neonGreen,
+                        size: 16,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         AppStrings.challengeUnlocked,
@@ -67,8 +73,9 @@ class ChallengeBottomSheet extends ConsumerWidget {
                     ],
                   ),
                 ).animate().fadeIn().shimmer(
-                    duration: 1500.ms,
-                    color: AppColors.neonGreen.withOpacity(0.3)),
+                  duration: 1500.ms,
+                  color: AppColors.neonGreen.withOpacity(0.3),
+                ),
 
                 const SizedBox(height: 16),
 
@@ -82,9 +89,7 @@ class ChallengeBottomSheet extends ConsumerWidget {
 
                 // Category
                 Row(
-                  children: [
-                    CategoryChip(category: challenge.category),
-                  ],
+                  children: [CategoryChip(category: challenge.category)],
                 ).animate().fadeIn(delay: 200.ms),
 
                 const SizedBox(height: 16),
@@ -131,4 +136,3 @@ class ChallengeBottomSheet extends ConsumerWidget {
     );
   }
 }
-

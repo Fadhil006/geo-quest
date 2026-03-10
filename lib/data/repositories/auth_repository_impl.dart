@@ -53,4 +53,3 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Team? get currentTeam => _cachedTeam;
 }
-

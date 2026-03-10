@@ -3,9 +3,12 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_config.dart';
+import '../../../core/constants/map_grid_config.dart';
 import '../../../core/theme/glassmorphism.dart';
 import '../../../core/utils/geo_utils.dart';
 import '../../../core/widgets/gradient_scaffold.dart';
@@ -16,10 +19,7 @@ import '../../providers/challenge_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../widgets/map/challenge_bottom_sheet.dart';
-
-// Conditionally import Google Maps — always present in pubspec
-// but only used when offlineMode is false.
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../widgets/map/map_svg_overlay.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -29,36 +29,35 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
-  GoogleMapController? _mapController;
-  final Set<Marker> _markers = {};
-  final Set<Circle> _circles = {};
   String? _lastUnlockedChallengeId;
-
-  static const _defaultCenter = LatLng(22.5726, 88.3639);
 
   @override
   void dispose() {
-    _mapController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // In offline mode, show the challenge list explorer instead of Google Maps
-    if (AppConfig.offlineMode) {
-      return _buildOfflineMapScreen(context);
-    }
-    return _buildOnlineMapScreen(context);
+    // Always show the interactive image map (no Google Maps API key needed).
+    // When GPS is enabled, markers are proximity-aware.
+    // When offlineMode && !gpsEnabled, use the tap-to-walk simulation.
+    return _buildImageMapScreen(context);
   }
 
   // ═══════════════════════════════════════════
-  // OFFLINE MODE — Interactive Image Map
+  // IMAGE MAP — GPS-aware when gpsEnabled
   // ═══════════════════════════════════════════
-  Widget _buildOfflineMapScreen(BuildContext context) {
+  Widget _buildImageMapScreen(BuildContext context) {
     final challengesAsync = ref.watch(challengesProvider);
     final session = ref.watch(sessionStreamProvider).valueOrNull;
     final completedIds = Set<String>.from(session?.completedChallengeIds ?? []);
     final skippedIds = Set<String>.from(session?.skippedChallengeIds ?? []);
+    final locationState = AppConfig.gpsEnabled ? ref.watch(locationProvider) : null;
+
+    // Auto-trigger challenge when entering a geofence
+    if (AppConfig.gpsEnabled) {
+      _checkGeofence(ref);
+    }
 
     return GradientScaffold(
       appBar: const NeonAppBar(title: 'QUEST MAP'),
@@ -68,28 +67,47 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             child: CircularProgressIndicator(color: AppColors.neonCyan),
           ),
           error: (e, _) => Center(
-            child: Text('Error: $e',
-                style: const TextStyle(color: AppColors.error)),
+            child: Text(
+              'Error: $e',
+              style: const TextStyle(color: AppColors.error),
+            ),
           ),
           data: (challenges) {
             return Column(
               children: [
-                // Stats bar
+                // GPS status + stats bar
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: Row(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Column(
                     children: [
-                      _miniStat(Icons.flag_rounded, '${challenges.length}',
-                          'Total', AppColors.neonCyan),
-                      const SizedBox(width: 12),
-                      _miniStat(
-                          Icons.check_circle_rounded,
-                          '${completedIds.length}',
-                          'Done',
-                          AppColors.neonGreen),
-                      const SizedBox(width: 12),
-                      _miniStat(Icons.skip_next_rounded, '${skippedIds.length}',
-                          'Skipped', AppColors.neonOrange),
+                      // GPS status indicator
+                      if (AppConfig.gpsEnabled)
+                        _buildGpsStatusBar(locationState!),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          _miniStat(
+                            Icons.flag_rounded,
+                            '${challenges.length}',
+                            'Total',
+                            AppColors.neonCyan,
+                          ),
+                          const SizedBox(width: 12),
+                          _miniStat(
+                            Icons.check_circle_rounded,
+                            '${completedIds.length}',
+                            'Done',
+                            AppColors.neonGreen,
+                          ),
+                          const SizedBox(width: 12),
+                          _miniStat(
+                            Icons.skip_next_rounded,
+                            '${skippedIds.length}',
+                            'Skipped',
+                            AppColors.neonOrange,
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ).animate().fadeIn(delay: 100.ms),
@@ -100,6 +118,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     challenges: challenges,
                     completedIds: completedIds,
                     skippedIds: skippedIds,
+                    userPosition: locationState?.position,
+                    gpsEnabled: AppConfig.gpsEnabled,
                     onChallengeTap: (challenge) {
                       _showChallengeSheet(challenge);
                     },
@@ -109,6 +129,70 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildGpsStatusBar(LocationState locationState) {
+    final hasPosition = locationState.position != null;
+    final isLoading = locationState.isLoading;
+    final error = locationState.error;
+
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+
+    if (isLoading) {
+      statusColor = AppColors.neonOrange;
+      statusIcon = Icons.gps_not_fixed_rounded;
+      statusText = 'Acquiring GPS signal...';
+    } else if (error != null) {
+      statusColor = AppColors.error;
+      statusIcon = Icons.gps_off_rounded;
+      statusText = error;
+    } else if (hasPosition) {
+      statusColor = AppColors.neonGreen;
+      statusIcon = Icons.gps_fixed_rounded;
+      statusText = 'GPS active — walk to quest markers!';
+    } else {
+      statusColor = AppColors.textMuted;
+      statusIcon = Icons.gps_not_fixed_rounded;
+      statusText = 'Waiting for GPS...';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(statusIcon, color: statusColor, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              statusText,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                color: statusColor,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (isLoading)
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: statusColor,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -145,182 +229,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════
-  // ONLINE MODE — Full Google Maps
-  // ═══════════════════════════════════════════
-  Widget _buildOnlineMapScreen(BuildContext context) {
-    final locationState = ref.watch(locationProvider);
-    final challengesAsync = ref.watch(challengesProvider);
-    final session = ref.watch(sessionStreamProvider).valueOrNull;
-
-    // Build markers from challenges
-    challengesAsync.whenData((challenges) {
-      _buildMarkers(challenges, locationState, session);
-    });
-
-    // Check geofence proximity
-    _checkGeofence(ref);
-
-    final currentPos = locationState.position;
-    final cameraTarget = currentPos != null
-        ? LatLng(currentPos.latitude, currentPos.longitude)
-        : _defaultCenter;
-
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: const NeonAppBar(title: 'QUEST MAP'),
-      body: Stack(
-        children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: cameraTarget,
-              zoom: 17,
-            ),
-            onMapCreated: (controller) {
-              _mapController = controller;
-              _setMapStyle(controller);
-            },
-            markers: _markers,
-            circles: _circles,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
-            compassEnabled: false,
-          ),
-
-          // Location loading indicator
-          if (locationState.isLoading)
-            const Center(
-              child: CircularProgressIndicator(color: AppColors.neonCyan),
-            ),
-
-          // Error banner
-          if (locationState.error != null)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
-              left: 16,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  locationState.error!,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                ),
-              ),
-            ),
-
-          // Center on user button
-          Positioned(
-            bottom: 24,
-            right: 16,
-            child: FloatingActionButton(
-              mini: true,
-              backgroundColor: AppColors.surface,
-              onPressed: () {
-                if (currentPos != null) {
-                  _mapController?.animateCamera(
-                    CameraUpdate.newLatLng(
-                      LatLng(currentPos.latitude, currentPos.longitude),
-                    ),
-                  );
-                }
-              },
-              child: const Icon(Icons.my_location_rounded,
-                  color: AppColors.neonCyan),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _buildMarkers(
-    List<Challenge> challenges,
-    LocationState locationState,
-    dynamic session,
-  ) {
-    final completedIds = Set<String>.from(session?.completedChallengeIds ?? []);
-    final pos = locationState.position;
-
-    _markers.clear();
-    _circles.clear();
-
-    for (final challenge in challenges) {
-      final isCompleted = completedIds.contains(challenge.id);
-      final isWithinRange = pos != null &&
-          GeoUtils.isWithinRadius(
-            userLat: pos.latitude,
-            userLon: pos.longitude,
-            targetLat: challenge.latitude,
-            targetLon: challenge.longitude,
-            radiusMeters: challenge.geofenceRadius,
-          );
-
-      // Marker
-      _markers.add(
-        Marker(
-          markerId: MarkerId(challenge.id),
-          position: LatLng(challenge.latitude, challenge.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            isCompleted
-                ? BitmapDescriptor.hueGreen
-                : isWithinRange
-                    ? BitmapDescriptor.hueCyan
-                    : BitmapDescriptor.hueRed,
-          ),
-          onTap: () {
-            if (isWithinRange && !isCompleted) {
-              _showChallengeSheet(challenge);
-            }
-          },
-          infoWindow: InfoWindow(
-            title: isCompleted ? '✅ ${challenge.title}' : challenge.title,
-            snippet: isCompleted
-                ? 'Completed'
-                : isWithinRange
-                    ? 'Tap to unlock!'
-                    : '${GeoUtils.formatDistance(GeoUtils.haversineDistance(pos?.latitude ?? 0, pos?.longitude ?? 0, challenge.latitude, challenge.longitude))} away',
-          ),
-        ),
-      );
-
-      // Geofence circle
-      _circles.add(
-        Circle(
-          circleId: CircleId(challenge.id),
-          center: LatLng(challenge.latitude, challenge.longitude),
-          radius: challenge.geofenceRadius,
-          fillColor: isCompleted
-              ? AppColors.neonGreen.withOpacity(0.1)
-              : isWithinRange
-                  ? AppColors.geofenceActive
-                  : AppColors.markerLocked.withOpacity(0.1),
-          strokeColor: isCompleted
-              ? AppColors.neonGreen.withOpacity(0.5)
-              : isWithinRange
-                  ? AppColors.geofenceBorder
-                  : AppColors.markerLocked.withOpacity(0.3),
-          strokeWidth: 2,
-        ),
-      );
-    }
-  }
-
   void _checkGeofence(WidgetRef ref) {
-    if (AppConfig.offlineMode) return; // Skip in offline mode
+    if (!AppConfig.gpsEnabled) return;
 
     final challenges = ref.watch(challengesProvider).valueOrNull ?? [];
     final locationNotifier = ref.read(locationProvider.notifier);
     final session = ref.watch(sessionStreamProvider).valueOrNull;
     final completedIds = Set<String>.from(session?.completedChallengeIds ?? []);
+    final skippedIds = Set<String>.from(session?.skippedChallengeIds ?? []);
 
     for (final challenge in challenges) {
       if (completedIds.contains(challenge.id)) continue;
+      if (skippedIds.contains(challenge.id)) continue;
       if (locationNotifier.isWithinGeofence(challenge)) {
         if (_lastUnlockedChallengeId != challenge.id) {
           _lastUnlockedChallengeId = challenge.id;
@@ -343,22 +263,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       builder: (_) => ChallengeBottomSheet(challenge: challenge),
     );
   }
-
-  Future<void> _setMapStyle(GoogleMapController controller) async {
-    // Dark map style
-    const style = '''[
-      {"elementType":"geometry","stylers":[{"color":"#1d2c4d"}]},
-      {"elementType":"labels.text.fill","stylers":[{"color":"#8ec3b9"}]},
-      {"elementType":"labels.text.stroke","stylers":[{"color":"#1a3646"}]},
-      {"featureType":"road","elementType":"geometry","stylers":[{"color":"#304a7d"}]},
-      {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#255763"}]},
-      {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#2c6675"}]},
-      {"featureType":"water","elementType":"geometry","stylers":[{"color":"#0e1626"}]},
-      {"featureType":"poi","elementType":"geometry","stylers":[{"color":"#283d6a"}]},
-      {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#2f3948"}]}
-    ]''';
-    await controller.setMapStyle(style);
-  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -368,12 +272,16 @@ class _InteractiveQuestMap extends StatefulWidget {
   final List<Challenge> challenges;
   final Set<String> completedIds;
   final Set<String> skippedIds;
+  final Position? userPosition;
+  final bool gpsEnabled;
   final void Function(Challenge) onChallengeTap;
 
   const _InteractiveQuestMap({
     required this.challenges,
     required this.completedIds,
     required this.skippedIds,
+    this.userPosition,
+    this.gpsEnabled = false,
     required this.onChallengeTap,
   });
 
@@ -387,23 +295,29 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
   Challenge? _selectedChallenge;
   bool _showWalkAnimation = false;
 
-  /// Distribute challenges as pin positions on the map image.
-  /// Uses a seeded random spread across the image bounds.
-  List<Offset> _markerPositions(int count, Size mapSize) {
-    final rng = Random(42); // Fixed seed for deterministic placement
-    const margin = 0.08; // 8% margin from edges
-    final positions = <Offset>[];
-    for (int i = 0; i < count; i++) {
-      final x = mapSize.width * (margin + rng.nextDouble() * (1 - 2 * margin));
-      final y = mapSize.height * (margin + rng.nextDouble() * (1 - 2 * margin));
-      positions.add(Offset(x, y));
-    }
-    return positions;
+  // ── GPS helpers ──────────────────────────────
+
+  double? _distanceTo(Challenge c) {
+    final pos = widget.userPosition;
+    if (!widget.gpsEnabled || pos == null) return null;
+    return GeoUtils.haversineDistance(
+      pos.latitude, pos.longitude,
+      c.latitude, c.longitude,
+    );
+  }
+
+  bool _isWithinRange(Challenge c) {
+    final dist = _distanceTo(c);
+    if (dist == null) return false;
+    return dist <= c.geofenceRadius;
   }
 
   Color _markerColor(Challenge c) {
     if (widget.completedIds.contains(c.id)) return AppColors.neonGreen;
     if (widget.skippedIds.contains(c.id)) return AppColors.neonOrange;
+    if (widget.gpsEnabled && widget.userPosition != null) {
+      return _isWithinRange(c) ? AppColors.neonGreen : AppColors.neonCyan;
+    }
     return AppColors.neonCyan;
   }
 
@@ -413,35 +327,29 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
     return Icons.location_on_rounded;
   }
 
-  /// IDs of the next 3 unattempted challenges to show on the map.
+  // ── Visibility helpers ──────────────────────
+
   List<String> get _nextAvailableIds {
-    final available = widget.challenges
+    return widget.challenges
         .where((c) =>
             !widget.completedIds.contains(c.id) &&
             !widget.skippedIds.contains(c.id))
         .take(3)
         .map((c) => c.id)
         .toList();
-    return available;
   }
 
-  /// Whether this challenge is one of the next 3 available to attempt.
-  bool _isInNextAvailable(String challengeId) {
-    return _nextAvailableIds.contains(challengeId);
+  bool _isVisible(Challenge c) {
+    return widget.completedIds.contains(c.id) ||
+        widget.skippedIds.contains(c.id) ||
+        _nextAvailableIds.contains(c.id);
   }
 
-  /// Returns the encounter order number (1-based) for a challenge.
-  /// Completed and skipped challenges get their order based on when the team
-  /// encountered them. Unattempted challenges show no number (null).
-  int? _encounterOrder(String challengeId) {
-    // Build ordered encounter list: completed + skipped in encounter order
-    final encountered = <String>[
-      ...widget.completedIds,
-      ...widget.skippedIds,
-    ];
-    final idx = encountered.indexOf(challengeId);
-    if (idx >= 0) return idx + 1;
-    return null; // not yet encountered
+  Set<String> get _visibleIds {
+    return widget.challenges
+        .where(_isVisible)
+        .map((c) => c.id)
+        .toSet();
   }
 
   @override
@@ -450,27 +358,39 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
     super.dispose();
   }
 
+  // ── Build ──────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // ── Map with markers ──
+        // ── Map + SVG overlay ──
         LayoutBuilder(
           builder: (context, constraints) {
-            // Map image is 1117x605. Scale to fit width, keep aspect ratio.
-            const imgAspect = 1117.0 / 605.0;
+            const imgAspect = MapGridConfig.imageWidth / MapGridConfig.imageHeight;
             final viewW = constraints.maxWidth;
             final viewH = constraints.maxHeight;
             final mapW = viewW;
             final mapH = mapW / imgAspect;
+            final yOffset = max(0.0, (viewH - mapH) / 2);
 
-            final positions =
-                _markerPositions(widget.challenges.length, Size(mapW, mapH));
+            // Build SVG overlay string
+            final svgString = MapSvgOverlay.build(
+              mapWidth: mapW,
+              mapHeight: mapH,
+              challenges: widget.challenges,
+              completedIds: widget.completedIds,
+              skippedIds: widget.skippedIds,
+              visibleIds: _visibleIds,
+              userLat: widget.userPosition?.latitude,
+              userLng: widget.userPosition?.longitude,
+              selectedChallengeId: _selectedChallenge?.id,
+            );
 
             return InteractiveViewer(
               transformationController: _transformController,
               minScale: 1.0,
-              maxScale: 3.0,
+              maxScale: 4.0,
               constrained: false,
               boundaryMargin: EdgeInsets.symmetric(
                 horizontal: viewW * 0.2,
@@ -481,9 +401,9 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
                 height: max(mapH, viewH),
                 child: Stack(
                   children: [
-                    // Map image
+                    // Layer 1: Map image
                     Positioned(
-                      top: max(0, (viewH - mapH) / 2),
+                      top: yOffset,
                       left: 0,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
@@ -495,9 +415,9 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
                         ),
                       ),
                     ),
-                    // Dark overlay for contrast
+                    // Layer 2: Dark overlay
                     Positioned(
-                      top: max(0, (viewH - mapH) / 2),
+                      top: yOffset,
                       left: 0,
                       child: Container(
                         width: mapW,
@@ -508,74 +428,60 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
                         ),
                       ),
                     ),
-                    // Challenge markers — only show done/skipped + next 3 available
-                    ...List.generate(widget.challenges.length, (i) {
-                      final c = widget.challenges[i];
-                      final isCompleted = widget.completedIds.contains(c.id);
-                      final isSkipped = widget.skippedIds.contains(c.id);
-
-                      // Only show completed, skipped, or the next 3 unattempted
-                      if (!isCompleted &&
-                          !isSkipped &&
-                          !_isInNextAvailable(c.id)) {
-                        return const SizedBox.shrink();
-                      }
-
-                      final pos = positions[i];
-                      final yOffset = max(0.0, (viewH - mapH) / 2);
-                      final color = _markerColor(c);
-                      final isSelected = _selectedChallenge?.id == c.id;
-                      final markerSize = isSelected ? 36.0 : 28.0;
-
-                      // Encounter order: completed + skipped in the order the team got them
-                      final encounterOrder = _encounterOrder(c.id);
-
+                    // Layer 3: SVG overlay (grid + markers + user dot)
+                    Positioned(
+                      top: yOffset,
+                      left: 0,
+                      child: IgnorePointer(
+                        child: SvgPicture.string(
+                          svgString,
+                          width: mapW,
+                          height: mapH,
+                        ),
+                      ),
+                    ),
+                    // Layer 4: Invisible tap zones for each visible challenge
+                    ...widget.challenges.where(_isVisible).map((c) {
+                      final px = MapGridConfig.geoToPixel(
+                        c.latitude, c.longitude, mapW, mapH,
+                      );
+                      const hitSize = 40.0;
                       return Positioned(
-                        left: pos.dx - markerSize / 2,
-                        top: yOffset + pos.dy - markerSize / 2,
+                        left: px.dx - hitSize / 2,
+                        top: yOffset + px.dy - hitSize / 2,
                         child: GestureDetector(
-                          onTap: () {
-                            setState(() => _selectedChallenge = c);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: markerSize,
-                            height: markerSize,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: color.withValues(alpha: 0.9),
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.white
-                                    : color.withValues(alpha: 0.6),
-                                width: isSelected ? 3 : 1.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: color.withValues(alpha: 0.5),
-                                  blurRadius: isSelected ? 16 : 8,
-                                  spreadRadius: isSelected ? 2 : 0,
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: isCompleted
-                                  ? const Icon(Icons.check_rounded,
-                                      color: Colors.white, size: 16)
-                                  : isSkipped
-                                      ? const Icon(Icons.skip_next_rounded,
-                                          color: Colors.white, size: 14)
-                                      : Text(
-                                          encounterOrder != null
-                                              ? '$encounterOrder'
-                                              : '?',
-                                          style: GoogleFonts.orbitron(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                            ),
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => setState(() => _selectedChallenge = c),
+                          child: SizedBox(
+                            width: hitSize,
+                            height: hitSize,
+                            // Distance tooltip below marker
+                            child: widget.gpsEnabled && _distanceTo(c) != null &&
+                                !widget.completedIds.contains(c.id) &&
+                                !widget.skippedIds.contains(c.id)
+                              ? Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.75),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      GeoUtils.formatDistance(_distanceTo(c)!),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 7,
+                                        color: _isWithinRange(c)
+                                            ? AppColors.neonGreen
+                                            : AppColors.textMuted,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : null,
                           ),
                         ),
                       );
@@ -596,9 +502,7 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('🚶', style: TextStyle(fontSize: 56))
-                      .animate(
-                        onComplete: (c) => c.repeat(),
-                      )
+                      .animate(onComplete: (c) => c.repeat())
                       .slideX(
                         begin: -0.3,
                         end: 0.3,
@@ -643,18 +547,61 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _legendDot(AppColors.neonCyan, 'Quest'),
-                _legendDot(AppColors.neonGreen, 'Done'),
-                _legendDot(AppColors.neonOrange, 'Skipped'),
+                _legendItem(AppColors.neonCyan, 'Quest'),
+                if (widget.gpsEnabled) ...[
+                  _legendItem(AppColors.neonGreen, 'In Range'),
+                  _legendItem(const Color(0xFF0096FF), 'You'),
+                ],
+                _legendItem(AppColors.neonGreen, 'Done'),
+                _legendItem(AppColors.neonOrange, 'Skipped'),
               ],
             ),
           ).animate().fadeIn(delay: 300.ms),
         ),
+
+        // ── Grid reference (bottom-left) ──
+        if (widget.gpsEnabled && widget.userPosition != null)
+          Positioned(
+            bottom: _selectedChallenge != null ? 260 : 8,
+            left: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.card.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.glassBorder, width: 0.5),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.grid_on_rounded,
+                      size: 12, color: AppColors.neonCyan),
+                  const SizedBox(width: 4),
+                  Text(
+                    _userGridRef,
+                    style: GoogleFonts.orbitron(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.neonCyan,
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 400.ms),
+          ),
       ],
     );
   }
 
-  Widget _legendDot(Color color, String label) {
+  /// User's current grid cell label, e.g. "D3".
+  String get _userGridRef {
+    final pos = widget.userPosition;
+    if (pos == null) return '--';
+    final (col, row) = MapGridConfig.geoToGrid(pos.latitude, pos.longitude);
+    return MapGridConfig.gridLabel(col, row);
+  }
+
+  Widget _legendItem(Color color, String label) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -663,10 +610,7 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
           Container(
             width: 10,
             height: 10,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color,
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
           ),
           const SizedBox(width: 6),
           Text(
@@ -687,6 +631,10 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
     final isSkipped = widget.skippedIds.contains(challenge.id);
     final isAvailable = !isCompleted && !isSkipped;
     final color = _markerColor(challenge);
+    final dist = _distanceTo(challenge);
+    final inRange = _isWithinRange(challenge);
+    // In GPS mode you must be in range; in sim mode always allowed
+    final canAttempt = isAvailable && (!widget.gpsEnabled || inRange);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -746,8 +694,10 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded,
-                      color: AppColors.textMuted),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: AppColors.textMuted,
+                  ),
                   onPressed: () => setState(() => _selectedChallenge = null),
                 ),
               ],
@@ -761,19 +711,30 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
                   isCompleted
                       ? Icons.check_circle_rounded
                       : isSkipped
-                          ? Icons.skip_next_rounded
-                          : Icons.play_circle_rounded,
+                      ? Icons.skip_next_rounded
+                      : Icons.play_circle_rounded,
                   isCompleted
                       ? 'Completed'
                       : isSkipped
-                          ? 'Skipped'
-                          : 'Available',
+                      ? 'Skipped'
+                      : 'Available',
                   isCompleted
                       ? AppColors.neonGreen
                       : isSkipped
-                          ? AppColors.neonOrange
-                          : AppColors.neonCyan,
+                      ? AppColors.neonOrange
+                      : AppColors.neonCyan,
                 ),
+                // Distance chip (GPS mode)
+                if (widget.gpsEnabled && dist != null && isAvailable) ...[
+                  const SizedBox(width: 8),
+                  _panelChip(
+                    inRange ? Icons.near_me_rounded : Icons.explore_rounded,
+                    inRange
+                        ? '${GeoUtils.formatDistance(dist)} — In range!'
+                        : '${GeoUtils.formatDistance(dist)} away',
+                    inRange ? AppColors.neonGreen : AppColors.neonOrange,
+                  ),
+                ],
               ],
             ),
             // Action button
@@ -781,11 +742,40 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                child: NeonButton(
-                  text: 'WALK HERE & SOLVE',
-                  icon: Icons.directions_walk_rounded,
-                  onPressed: () => _walkToChallenge(challenge),
-                ),
+                child: canAttempt
+                    ? NeonButton(
+                        text: widget.gpsEnabled ? 'SOLVE CHALLENGE' : 'WALK HERE & SOLVE',
+                        icon: widget.gpsEnabled ? Icons.play_arrow_rounded : Icons.directions_walk_rounded,
+                        onPressed: () => _walkToChallenge(challenge),
+                      )
+                    : Opacity(
+                        opacity: 0.5,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            color: AppColors.textMuted.withValues(alpha: 0.15),
+                            border: Border.all(color: AppColors.textMuted.withValues(alpha: 0.2)),
+                          ),
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.lock_rounded, color: AppColors.textMuted, size: 16),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'GET CLOSER — ${GeoUtils.formatDistance(dist ?? 0)} away',
+                                  style: GoogleFonts.orbitron(
+                                    fontSize: 11,
+                                    color: AppColors.textMuted,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
               ),
             ],
           ],
@@ -821,16 +811,21 @@ class _InteractiveQuestMapState extends State<_InteractiveQuestMap> {
   }
 
   void _walkToChallenge(Challenge challenge) {
-    setState(() => _showWalkAnimation = true);
-
-    // Simulate walking for 1.5 seconds then open challenge
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      setState(() {
-        _showWalkAnimation = false;
-        _selectedChallenge = null;
-      });
+    if (widget.gpsEnabled) {
+      // GPS mode — user is already in range, open challenge immediately
+      setState(() => _selectedChallenge = null);
       widget.onChallengeTap(challenge);
-    });
+    } else {
+      // Sim mode — show walk animation then open challenge
+      setState(() => _showWalkAnimation = true);
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (!mounted) return;
+        setState(() {
+          _showWalkAnimation = false;
+          _selectedChallenge = null;
+        });
+        widget.onChallengeTap(challenge);
+      });
+    }
   }
 }

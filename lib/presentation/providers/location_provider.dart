@@ -42,8 +42,8 @@ class LocationNotifier extends StateNotifier<LocationState> {
   }
 
   Future<void> _init() async {
-    // In offline mode, skip GPS entirely
-    if (AppConfig.offlineMode) {
+    // Skip GPS if not enabled
+    if (!AppConfig.gpsEnabled) {
       state = const LocationState(
         isLoading: false,
         permissionGranted: false,
