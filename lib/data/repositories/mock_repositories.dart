@@ -73,6 +73,8 @@ class MockSessionRepository implements SessionRepository {
   @override
   Future<Session> createSession(String teamId) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    // Clear question cache so new team gets a fresh random set
+    QuestionLoader.clearCache();
     final now = DateTime.now();
     _activeSession = Session(
       id: _uuid.v4().substring(0, 8),
@@ -169,16 +171,24 @@ class MockSessionRepository implements SessionRepository {
 // ═══════════════════════════════════════════════════
 class MockChallengeRepository implements ChallengeRepository {
   final MockSessionRepository _sessionRepo;
+  final MockAuthRepository _authRepo;
 
-  MockChallengeRepository(this._sessionRepo);
+  MockChallengeRepository(this._sessionRepo, this._authRepo);
 
-  /// Cached challenges loaded from JSON
+  /// Cached challenges loaded from JSON (team-specific)
   List<Challenge>? _challenges;
 
-  /// Load challenges from JSON asset (lazy, cached)
+  /// Load challenges for the current team (lazy, cached per team).
   Future<List<Challenge>> _loadChallenges() async {
-    _challenges ??= await QuestionLoader.loadQuestions();
+    final teamId = _authRepo.currentTeam?.id ?? '__default__';
+    _challenges ??= await QuestionLoader.loadQuestionsForTeam(teamId);
     return _challenges!;
+  }
+
+  /// Clear cached challenges (call when starting a new session).
+  void clearCache() {
+    _challenges = null;
+    QuestionLoader.clearCache();
   }
 
   @override

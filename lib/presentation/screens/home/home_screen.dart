@@ -7,7 +7,6 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/gradient_scaffold.dart';
 import '../../../core/widgets/neon_app_bar.dart';
 import '../../../core/widgets/neon_button.dart';
-import '../../../domain/entities/challenge.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../providers/timer_provider.dart';
@@ -16,32 +15,6 @@ import '../../widgets/home/stat_card.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
-
-  String _difficultyLabel(ChallengeDifficulty d) {
-    switch (d) {
-      case ChallengeDifficulty.easy:
-        return AppStrings.easy;
-      case ChallengeDifficulty.medium:
-        return AppStrings.medium;
-      case ChallengeDifficulty.hard:
-        return AppStrings.hard;
-      case ChallengeDifficulty.expert:
-        return AppStrings.expert;
-    }
-  }
-
-  Color _difficultyColor(ChallengeDifficulty d) {
-    switch (d) {
-      case ChallengeDifficulty.easy:
-        return AppColors.difficultyEasy;
-      case ChallengeDifficulty.medium:
-        return AppColors.difficultyMedium;
-      case ChallengeDifficulty.hard:
-        return AppColors.difficultyHard;
-      case ChallengeDifficulty.expert:
-        return AppColors.difficultyExpert;
-    }
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -163,10 +136,10 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: StatCard(
-                  icon: Icons.speed_rounded,
-                  label: AppStrings.difficulty,
-                  value: _difficultyLabel(session.currentDifficulty),
-                  color: _difficultyColor(session.currentDifficulty),
+                  icon: Icons.flag_rounded,
+                  label: 'Completed',
+                  value: '${session.challengesCompleted}',
+                  color: AppColors.neonGreen,
                 ).animate().fadeIn(delay: 300.ms).slideX(begin: 0.3),
               ),
             ],
@@ -176,21 +149,14 @@ class HomeScreen extends ConsumerWidget {
             children: [
               Expanded(
                 child: StatCard(
-                  icon: Icons.flag_rounded,
-                  label: 'Completed',
-                  value: '${session.challengesCompleted}',
-                  color: AppColors.neonGreen,
-                ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.3),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: StatCard(
                   icon: Icons.trending_up_rounded,
                   label: 'Accuracy',
                   value: '${(session.accuracyRate * 100).toInt()}%',
                   color: AppColors.neonPurple,
-                ).animate().fadeIn(delay: 500.ms).slideX(begin: 0.3),
+                ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.3),
               ),
+              const SizedBox(width: 16),
+              const Expanded(child: SizedBox()),
             ],
           ),
 

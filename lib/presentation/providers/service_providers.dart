@@ -12,7 +12,8 @@ import '../../domain/usecases/start_session_usecase.dart';
 // ══════════════════════════════════════════════
 final _mockSessionRepo = MockSessionRepository();
 final _mockAuthRepo = MockAuthRepository();
-final _mockChallengeRepo = MockChallengeRepository(_mockSessionRepo);
+final _mockChallengeRepo =
+    MockChallengeRepository(_mockSessionRepo, _mockAuthRepo);
 final _mockLeaderboardRepo = MockLeaderboardRepository();
 
 /// ── Repository Providers ──

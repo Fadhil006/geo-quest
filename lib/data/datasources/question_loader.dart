@@ -1,42 +1,46 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/services.dart' show rootBundle;
 import '../../domain/entities/challenge.dart';
 
+/// How many questions each team gets per difficulty tier.
+/// Total per team = perTier × 4 (easy + medium + hard + expert).
+const int _questionsPerTier = 5;
+
 /// Loads questions from bundled JSON asset files and converts them
 /// to [Challenge] entities used throughout the app.
+///
+/// Each team receives a **different, randomly-selected and shuffled**
+/// subset of questions. The selection is deterministic per team ID
+/// so reloading gives the same set.  GPS marker positions are also
+/// randomised per team.
 class QuestionLoader {
   QuestionLoader._();
 
-  /// Loaded questions cache (so we only read from disk once)
+  /// Loaded questions cache — keyed by team ID.
+  static String? _cachedTeamId;
   static List<Challenge>? _cache;
 
-  /// Answer map: challengeId → correct answer letter (e.g. "B")
+  /// Answer map: challengeId → correct answer text
   static final Map<String, String> _answerMap = {};
 
   /// Get the answer map (for mock validation)
   static Map<String, String> get answerMap => Map.unmodifiable(_answerMap);
 
-  /// Load all questions from the `question/1.json` asset.
-  /// Returns a list of [Challenge] objects with difficulty assigned
-  /// based on question index tiers.
-  static Future<List<Challenge>> loadQuestions() async {
-    if (_cache != null) return _cache!;
-
+  // ─── Internal: load the full question bank (no caching of this) ───
+  static Future<List<_RawQuestion>> _loadBank() async {
     final jsonString = await rootBundle.loadString('question/1.json');
     final data = json.decode(jsonString) as Map<String, dynamic>;
     final questions = data['questions'] as List<dynamic>;
 
-    final challenges = <Challenge>[];
-    _answerMap.clear();
-
+    final bank = <_RawQuestion>[];
     for (int i = 0; i < questions.length; i++) {
       final q = questions[i] as Map<String, dynamic>;
       final id = 'q${q['id']}';
       final questionText = q['question'] as String;
       final optionsMap = q['options'] as Map<String, dynamic>;
-      final answerKey = q['answer'] as String; // "A", "B", "C", or "D"
+      final answerKey = q['answer'] as String;
 
-      // Build options list: ["A. text", "B. text", ...]
       final options = <String>[];
       for (final key in ['A', 'B', 'C', 'D']) {
         if (optionsMap.containsKey(key)) {
@@ -44,54 +48,106 @@ class QuestionLoader {
         }
       }
 
-      // Store answer as the full option text for validation
       final answerIndex = answerKey.codeUnitAt(0) - 'A'.codeUnitAt(0);
       final answerText =
           answerIndex < options.length ? options[answerIndex] : '';
-      _answerMap[id] = answerText;
 
-      // Assign difficulty based on question index tiers
+      // Difficulty assigned by position in the JSON (unchanged)
       final difficulty = _difficultyForIndex(i, questions.length);
 
-      // Assign category based on content heuristics
-      final category = _categoryForQuestion(i, questionText);
+      bank.add(_RawQuestion(
+        id: id,
+        originalIndex: i,
+        questionText: questionText,
+        options: options,
+        answerText: answerText,
+        difficulty: difficulty,
+      ));
+    }
+    return bank;
+  }
 
-      // Points scale with difficulty
-      final points = _pointsForDifficulty(difficulty);
+  /// Load a **team-specific** set of questions.
+  ///
+  /// * Picks [_questionsPerTier] questions from each difficulty bucket
+  ///   (easy, medium, hard, expert) using the team's hash as seed.
+  /// * Shuffles the final list so question order is random per team.
+  /// * Assigns GPS coordinates randomly (but deterministically) per team.
+  static Future<List<Challenge>> loadQuestionsForTeam(String teamId) async {
+    // Return cache if we already built this team's set
+    if (_cachedTeamId == teamId && _cache != null) return _cache!;
 
-      // Time limit scales with difficulty
-      final timeLimit = _timeLimitForDifficulty(difficulty);
+    final bank = await _loadBank();
 
-      // Spread GPS coordinates around a campus center
-      final coords = _coordinatesForIndex(i, questions.length);
+    // Deterministic RNG seeded from team ID
+    final seed = teamId.hashCode;
+    final rng = Random(seed);
+
+    // Group by difficulty
+    final buckets = <ChallengeDifficulty, List<_RawQuestion>>{};
+    for (final d in ChallengeDifficulty.values) {
+      buckets[d] = bank.where((q) => q.difficulty == d).toList();
+    }
+
+    // Pick _questionsPerTier from each bucket (shuffle first, then take)
+    final selected = <_RawQuestion>[];
+    for (final d in ChallengeDifficulty.values) {
+      final bucket = buckets[d]!;
+      bucket.shuffle(rng);
+      selected.addAll(bucket.take(_questionsPerTier));
+    }
+
+    // Shuffle the combined selection so difficulties are interleaved
+    selected.shuffle(rng);
+
+    // Build Challenge objects with team-random GPS positions
+    _answerMap.clear();
+    final challenges = <Challenge>[];
+
+    for (int i = 0; i < selected.length; i++) {
+      final q = selected[i];
+      _answerMap[q.id] = q.answerText;
+
+      final category = _categoryForQuestion(q.originalIndex, q.questionText);
+      final points = _pointsForDifficulty(q.difficulty);
+      final timeLimit = _timeLimitForDifficulty(q.difficulty);
+      final coords = _randomCoordinates(rng);
 
       challenges.add(Challenge(
-        id: id,
-        title: 'Challenge ${q['id']}',
+        id: q.id,
+        title: 'Challenge ${q.id.substring(1)}', // strip leading 'q'
         description: _descriptionForCategory(category),
         category: category,
-        difficulty: difficulty,
+        difficulty: q.difficulty,
         type: ChallengeType.multipleChoice,
         latitude: coords.$1,
         longitude: coords.$2,
         points: points,
         timeLimitSeconds: timeLimit,
-        question: questionText,
-        options: options,
+        question: q.questionText,
+        options: q.options,
       ));
     }
 
     _cache = challenges;
+    _cachedTeamId = teamId;
     return challenges;
   }
 
-  /// Clear the cache (useful for testing or hot-reload)
+  /// Legacy entry point — loads ALL questions (no team filtering).
+  /// Prefer [loadQuestionsForTeam] for gameplay.
+  static Future<List<Challenge>> loadQuestions() async {
+    return loadQuestionsForTeam('__default__');
+  }
+
+  /// Clear the cache (call when a new session starts)
   static void clearCache() {
     _cache = null;
+    _cachedTeamId = null;
     _answerMap.clear();
   }
 
-  // ── Difficulty assignment ──
+  // ── Difficulty assignment (by position in the JSON bank) ──
   // First ~30% = easy, next ~30% = medium, next ~25% = hard, last ~15% = expert
   static ChallengeDifficulty _difficultyForIndex(int index, int total) {
     final ratio = index / total;
@@ -196,29 +252,35 @@ class QuestionLoader {
     }
   }
 
-  // Spread challenges in a circle around campus center
-  static (double lat, double lng) _coordinatesForIndex(int index, int total) {
-    const centerLat = 22.5726;
-    const centerLng = 88.3639;
-    const radius = 0.003; // ~300m spread
+  // Randomise GPS position inside the campus bounding box.
+  // Uses the team-seeded [rng] so every team gets different positions.
+  static (double lat, double lng) _randomCoordinates(Random rng) {
+    const minLat = 22.5695;
+    const maxLat = 22.5757;
+    const minLng = 88.3604;
+    const maxLng = 88.3674;
 
-    final angle = (index / total) * 2 * 3.14159265;
-    final lat = centerLat + radius * _cos(angle);
-    final lng = centerLng + radius * _sin(angle);
+    final lat = minLat + rng.nextDouble() * (maxLat - minLat);
+    final lng = minLng + rng.nextDouble() * (maxLng - minLng);
     return (lat, lng);
   }
+}
 
-  static double _sin(double x) {
-    // Simple sin approximation (avoids dart:math import for this utility)
-    x = x % (2 * 3.14159265);
-    double result = x;
-    double term = x;
-    for (int i = 1; i <= 7; i++) {
-      term *= -x * x / ((2 * i) * (2 * i + 1));
-      result += term;
-    }
-    return result;
-  }
+/// Internal data class for a raw question before it becomes a [Challenge].
+class _RawQuestion {
+  final String id;
+  final int originalIndex;
+  final String questionText;
+  final List<String> options;
+  final String answerText;
+  final ChallengeDifficulty difficulty;
 
-  static double _cos(double x) => _sin(x + 3.14159265 / 2);
+  _RawQuestion({
+    required this.id,
+    required this.originalIndex,
+    required this.questionText,
+    required this.options,
+    required this.answerText,
+    required this.difficulty,
+  });
 }

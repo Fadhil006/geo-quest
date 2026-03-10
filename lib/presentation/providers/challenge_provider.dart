@@ -4,8 +4,11 @@ import '../../domain/repositories/challenge_repository.dart';
 import 'service_providers.dart';
 import 'session_provider.dart';
 
-/// All challenges provider
+/// All challenges provider — rebuilds when the session changes
+/// (so a new session / new team gets a fresh random set).
 final challengesProvider = FutureProvider<List<Challenge>>((ref) async {
+  // Watch the session so we reload when a new session starts
+  ref.watch(sessionStreamProvider);
   final repo = ref.read(challengeRepositoryProvider);
   return repo.getChallenges();
 });
@@ -115,4 +118,3 @@ final submissionProvider =
     StateNotifierProvider<SubmissionNotifier, SubmissionState>((ref) {
   return SubmissionNotifier(ref.read(challengeRepositoryProvider));
 });
-
