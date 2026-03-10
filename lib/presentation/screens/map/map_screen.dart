@@ -38,7 +38,10 @@ import '../../providers/location_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../widgets/map/challenge_bottom_sheet.dart';
 
-const String _googleApiKey = 'AIzaSyBS1YvHqfQSiiBb5d6FgrXtPRi_3VGiSMM';
+const String _googleApiKey = String.fromEnvironment(
+  'GOOGLE_MAPS_API_KEY',
+  defaultValue: '',
+);
 
 // Campus centre (IIIT Kottayam, Valavoor, Kerala)
 const double _campusLat = 9.754914;
