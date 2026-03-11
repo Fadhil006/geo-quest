@@ -3,7 +3,11 @@
 class AppConfig {
   /// Set to `true` to run the app entirely offline with mock data.
   /// Set to `false` when Firebase + Google Maps are configured.
-  static const bool offlineMode = true;
+  static const bool offlineMode = false;
+
+  /// Base URL for the Spring Boot backend API
+  /// Use localhost for Linux/web, 10.0.2.2 for Android emulator
+  static const String apiBaseUrl = 'http://localhost:8080/api';
 
   /// Set to `true` to enable real GPS location tracking.
   /// Works independently of offlineMode — you can use GPS with mock data.

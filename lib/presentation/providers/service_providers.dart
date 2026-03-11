@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/constants/app_config.dart';
 import '../../data/repositories/mock_repositories.dart';
+import '../../data/repositories/api_repositories.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/challenge_repository.dart';
 import '../../domain/repositories/session_repository.dart';
@@ -16,30 +18,44 @@ final _mockChallengeRepo =
     MockChallengeRepository(_mockSessionRepo, _mockAuthRepo);
 final _mockLeaderboardRepo = MockLeaderboardRepository();
 
+// ══════════════════════════════════════════════
+// API SINGLETONS (for online mode)
+// ══════════════════════════════════════════════
+final _apiAuthRepo = ApiAuthRepository();
+final _apiSessionRepo = ApiSessionRepository();
+final _apiChallengeRepo = ApiChallengeRepository(_apiSessionRepo);
+final _apiLeaderboardRepo = ApiLeaderboardRepository();
+
 /// ── Repository Providers ──
-/// In offline mode → Mock repositories (no Firebase needed)
-/// In online mode → you must uncomment the Firebase imports below and
-///   replace the mock returns with real implementations.
+/// offlineMode → Mock repositories
+/// online mode → API repositories connected to Spring Boot backend
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  // Online mode: return AuthRepositoryImpl(ref.read(firebaseAuthDatasourceProvider));
-  return _mockAuthRepo;
+  if (AppConfig.offlineMode) return _mockAuthRepo;
+  return _apiAuthRepo;
 });
 
 final sessionRepositoryProvider = Provider<SessionRepository>((ref) {
-  // Online mode: return SessionRepositoryImpl(firestoreDs, realtimeDs);
-  return _mockSessionRepo;
+  if (AppConfig.offlineMode) return _mockSessionRepo;
+  return _apiSessionRepo;
 });
 
 final challengeRepositoryProvider = Provider<ChallengeRepository>((ref) {
-  // Online mode: return ChallengeRepositoryImpl(firestoreDs);
-  return _mockChallengeRepo;
+  if (AppConfig.offlineMode) return _mockChallengeRepo;
+  return _apiChallengeRepo;
 });
 
 final leaderboardRepositoryProvider = Provider<LeaderboardRepository>((ref) {
-  // Online mode: return LeaderboardRepositoryImpl(realtimeDs);
-  return _mockLeaderboardRepo;
+  if (AppConfig.offlineMode) return _mockLeaderboardRepo;
+  return _apiLeaderboardRepo;
 });
+
+/// ── API-specific providers ──
+
+final apiAuthRepoProvider = Provider<ApiAuthRepository>((ref) => _apiAuthRepo);
+final apiSessionRepoProvider = Provider<ApiSessionRepository>((ref) => _apiSessionRepo);
+final apiChallengeRepoProvider = Provider<ApiChallengeRepository>((ref) => _apiChallengeRepo);
+final apiLeaderboardRepoProvider = Provider<ApiLeaderboardRepository>((ref) => _apiLeaderboardRepo);
 
 /// ── Use Case Providers ──
 
